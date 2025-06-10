@@ -1,16 +1,10 @@
 import React, { useState } from 'react';
+//checking if git works
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-import HomeScreen from './screens/HomeScreen';
-import UploadScreen from './screens/UploadScreen';
-import CourseConfirmationScreen from './screens/CourseConfirmationScreen';
-import ScheduleInputScreen from './screens/ScheduleInputScreen';
-import ScheduleViewScreen from './screens/ScheduleViewScreen';
 
 export type RootStackParamList = {
   Home: undefined;
