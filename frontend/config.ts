@@ -1,5 +1,5 @@
 // API Configuration
-const DEV_API_URL = 'http://192.168.0.41:3001';  // Using local IP address
+const DEV_API_URL = 'http://192.168.0.42:3001';  // Using local IP address
 const PROD_API_URL = 'https://your-production-api.com'; // Change this when deploying
 
 // Use environment variable or default to development
