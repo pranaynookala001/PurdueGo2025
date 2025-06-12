@@ -16,6 +16,7 @@ import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../App';
 import { getApiUrl, API_ENDPOINTS } from '../config';
 import { Swipeable } from 'react-native-gesture-handler';
+import { saveUserData } from '../src/utils/userData';
 
 type ScheduleInputScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -113,6 +114,9 @@ export default function ScheduleInputScreen({ navigation, route }: Props) {
     setIsGenerating(true);
 
     try {
+      // Save schedule to Firestore
+      await saveUserData({ schedule: courseDetails });
+
       const response = await fetch(getApiUrl(API_ENDPOINTS.GENERATE_SCHEDULE), {
         method: 'POST',
         headers: {
