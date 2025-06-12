@@ -15,12 +15,22 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.purduego.purduego",
+      "config": {
+        "googleMapsApiKey": "AIzaSyA5blZoZ1RLVNeDYk-8qKATJQyn-XQ0y-g"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
+      },
+      "package": "com.purduego.purduego",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyA5blZoZ1RLVNeDYk-8qKATJQyn-XQ0y-g"
+        }
       }
     },
     "web": {

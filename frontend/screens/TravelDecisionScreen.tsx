@@ -4,50 +4,49 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   SafeAreaView,
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../App';
 
-type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
+type TravelDecisionScreenNavigationProp = StackNavigationProp<RootStackParamList, 'TravelDecision'>;
 
 interface Props {
-  navigation: HomeScreenNavigationProp;
+  navigation: TravelDecisionScreenNavigationProp;
 }
 
-export default function HomeScreen({ navigation }: Props) {
+export default function TravelDecisionScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.title}>PurdueGo</Text>
+          <Text style={styles.title}>Travel Notifications</Text>
           <Text style={styles.subtitle}>
-            Your personalized scheduling assistant
+            Would you like to receive notifications about when to leave for your classes?
           </Text>
-        </View>
-
-        <View style={styles.logoContainer}>
-          <View style={styles.logoPlaceholder}>
-            <Text style={styles.logoText}>📚</Text>
-          </View>
         </View>
 
         <View style={styles.features}>
           <Text style={styles.featuresTitle}>Features:</Text>
-          <Text style={styles.featureItem}>• Upload advisor-generated PDFs</Text>
-          <Text style={styles.featureItem}>• Automatic course extraction</Text>
-          <Text style={styles.featureItem}>• Smart schedule generation</Text>
-          <Text style={styles.featureItem}>• Weekly and daily views</Text>
-          <Text style={styles.featureItem}>• Travel time notifications</Text>
+          <Text style={styles.featureItem}>• Get notified when it's time to leave for class</Text>
+          <Text style={styles.featureItem}>• Real-time travel time calculations</Text>
+          <Text style={styles.featureItem}>• Automatic scheduling based on your class times</Text>
+          <Text style={styles.featureItem}>• Location-based reminders</Text>
         </View>
 
         <View style={styles.buttonContainer}>
           <TouchableOpacity
-            style={styles.startButton}
-            onPress={() => navigation.navigate('TravelDecision')}
+            style={[styles.button, styles.yesButton]}
+            onPress={() => navigation.navigate('TravelSetup')}
           >
-            <Text style={styles.startButtonText}>Get Started</Text>
+            <Text style={styles.buttonText}>Yes, Enable Travel Notifications</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.button, styles.noButton]}
+            onPress={() => navigation.navigate('Upload')}
+          >
+            <Text style={styles.buttonText}>No, Skip for Now</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -79,23 +78,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
-  },
-  logoContainer: {
-    alignItems: 'center',
-    marginVertical: 40,
-  },
-  logoPlaceholder: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#f0f0f0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#B1810B',
-  },
-  logoText: {
-    fontSize: 48,
+    marginHorizontal: 20,
   },
   features: {
     backgroundColor: '#f8f8f8',
@@ -115,24 +98,25 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     lineHeight: 20,
   },
-  startButton: {
-    backgroundColor: '#B1810B',
+  buttonContainer: {
+    gap: 15,
+    marginBottom: 20,
+  },
+  button: {
     paddingVertical: 16,
     paddingHorizontal: 32,
     borderRadius: 8,
     alignItems: 'center',
-    marginBottom: 20,
   },
-  startButtonText: {
+  yesButton: {
+    backgroundColor: '#B1810B',
+  },
+  noButton: {
+    backgroundColor: '#4A90E2',
+  },
+  buttonText: {
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
   },
-  buttonContainer: {
-    gap: 10,
-    marginBottom: 20,
-  },
-  travelButton: {
-    backgroundColor: '#4A90E2',
-  },
-});
+}); 

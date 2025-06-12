@@ -16,6 +16,7 @@ import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../App';
 import { getApiUrl, API_ENDPOINTS } from '../config';
 import { Swipeable } from 'react-native-gesture-handler';
+import { saveUserData } from '../src/utils/userData';
 
 type ScheduleInputScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -113,6 +114,9 @@ export default function ScheduleInputScreen({ navigation, route }: Props) {
     setIsGenerating(true);
 
     try {
+      // Save schedule to Firestore
+      await saveUserData({ schedule: courseDetails });
+
       const response = await fetch(getApiUrl(API_ENDPOINTS.GENERATE_SCHEDULE), {
         method: 'POST',
         headers: {
@@ -144,8 +148,11 @@ export default function ScheduleInputScreen({ navigation, route }: Props) {
 
   const addOneHour = (timeStr: string) => {
     const [time, period] = timeStr.split(' ');
-    const [hours, minutes] = time.split(':').map(Number);
-    let newHour = hours + 1;
+    const [hours, minutesRaw] = time.split(':');
+    const hoursNum = Number(hours);
+    let minutesNum = Number(minutesRaw);
+    if (isNaN(minutesNum)) minutesNum = 0;
+    let newHour = hoursNum + 1;
     let newPeriod = period;
 
     if (newHour > 12) {
@@ -156,7 +163,7 @@ export default function ScheduleInputScreen({ navigation, route }: Props) {
       newPeriod = period === 'AM' ? 'PM' : 'AM';
     }
 
-    return `${newHour}:${minutes.toString().padStart(2, '0')} ${newPeriod}`;
+    return `${newHour}:${minutesNum.toString().padStart(2, '0')} ${newPeriod}`;
   };
 
   const handleTimeSelect = (index: number, courseIndex: number, isStart: boolean) => {
