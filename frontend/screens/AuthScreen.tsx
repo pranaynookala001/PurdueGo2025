@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, TextInput, SafeAreaView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, TextInput, SafeAreaView, Image } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
 import { auth } from '../FirebaseConfig';
@@ -18,7 +18,6 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
       const user = await signInWithEmailAndPassword(auth, email, password);
       if (user) navigation.replace('Home');
     } catch (error: any) {
-      console.log(error);
       alert('Sign in failed: ' + error.message);
     }
   };
@@ -28,13 +27,15 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
       const user = await createUserWithEmailAndPassword(auth, email, password);
       if (user) navigation.replace('Home');
     } catch (error: any) {
-      console.log(error);
       alert('Sign up failed: ' + error.message);
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.logoContainer}>
+        <Image source={require('../assets/purdue_logo.png')} style={styles.logo} resizeMode="contain" />
+      </View>
       <Text style={styles.title}>Welcome to PurdueGo</Text>
       <TextInput 
         style={styles.textInput} 
@@ -68,6 +69,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#FAFAFA',
     padding: 20,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  logo: {
+    width: 100,
+    height: 100,
+    marginBottom: 10,
   },
   title: {
     fontSize: 28,

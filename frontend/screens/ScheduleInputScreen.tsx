@@ -144,8 +144,11 @@ export default function ScheduleInputScreen({ navigation, route }: Props) {
 
   const addOneHour = (timeStr: string) => {
     const [time, period] = timeStr.split(' ');
-    const [hours, minutes] = time.split(':').map(Number);
-    let newHour = hours + 1;
+    const [hours, minutesRaw] = time.split(':');
+    const hoursNum = Number(hours);
+    let minutesNum = Number(minutesRaw);
+    if (isNaN(minutesNum)) minutesNum = 0;
+    let newHour = hoursNum + 1;
     let newPeriod = period;
 
     if (newHour > 12) {
@@ -156,7 +159,7 @@ export default function ScheduleInputScreen({ navigation, route }: Props) {
       newPeriod = period === 'AM' ? 'PM' : 'AM';
     }
 
-    return `${newHour}:${minutes.toString().padStart(2, '0')} ${newPeriod}`;
+    return `${newHour}:${minutesNum.toString().padStart(2, '0')} ${newPeriod}`;
   };
 
   const handleTimeSelect = (index: number, courseIndex: number, isStart: boolean) => {

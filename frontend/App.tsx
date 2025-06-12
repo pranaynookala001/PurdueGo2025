@@ -14,6 +14,8 @@ import CourseConfirmationScreen from './screens/CourseConfirmationScreen';
 import ScheduleInputScreen from './screens/ScheduleInputScreen';
 import ScheduleViewScreen from './screens/ScheduleViewScreen';
 import AuthScreen from './screens/AuthScreen';
+import TravelSetup from './src/components/TravelSetup';
+import TravelDecisionScreen from './screens/TravelDecisionScreen';
 
 export type RootStackParamList = {
   Auth: undefined;
@@ -22,6 +24,8 @@ export type RootStackParamList = {
   CourseConfirmation: { courses: string[] };
   ScheduleInput: { courses: string[] };
   ScheduleView: { schedule: any };
+  TravelSetup: undefined;
+  TravelDecision: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -92,6 +96,16 @@ export default function App() {
               name="ScheduleView" 
               component={ScheduleViewScreen} 
               options={{ title: 'Your Schedule' }}
+            />
+            <Stack.Screen 
+              name="TravelSetup" 
+              component={TravelSetup} 
+              options={{ title: 'Travel Setup' }}
+            />
+            <Stack.Screen 
+              name="TravelDecision" 
+              component={TravelDecisionScreen} 
+              options={{ title: 'Travel Notifications' }}
             />
           </Stack.Navigator>
         </NavigationContainer>

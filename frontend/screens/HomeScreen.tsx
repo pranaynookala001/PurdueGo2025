@@ -39,14 +39,17 @@ export default function HomeScreen({ navigation }: Props) {
           <Text style={styles.featureItem}>• Automatic course extraction</Text>
           <Text style={styles.featureItem}>• Smart schedule generation</Text>
           <Text style={styles.featureItem}>• Weekly and daily views</Text>
+          <Text style={styles.featureItem}>• Travel time notifications</Text>
         </View>
 
-        <TouchableOpacity
-          style={styles.startButton}
-          onPress={() => navigation.navigate('Upload')}
-        >
-          <Text style={styles.startButtonText}>Get Started</Text>
-        </TouchableOpacity>
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={styles.startButton}
+            onPress={() => navigation.navigate('TravelDecision')}
+          >
+            <Text style={styles.startButtonText}>Get Started</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -124,5 +127,12 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  buttonContainer: {
+    gap: 10,
+    marginBottom: 20,
+  },
+  travelButton: {
+    backgroundColor: '#4A90E2',
   },
 });
