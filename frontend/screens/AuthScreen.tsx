@@ -4,6 +4,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
 import { auth } from '../FirebaseConfig';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { loadUserData } from '../src/utils/userData';
+import { getApiUrl, API_ENDPOINTS } from '../config';
 
 type AuthScreenProps = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Auth'>;
@@ -16,7 +18,29 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
   const handleSignIn = async () => {
     try {
       const user = await signInWithEmailAndPassword(auth, email, password);
-      if (user) navigation.replace('Home');
+      if (user) {
+        // Load user data from Firestore
+        const userData = await loadUserData();
+        if (userData && userData.schedule) {
+          // Process the schedule data through the backend
+          const response = await fetch(getApiUrl(API_ENDPOINTS.GENERATE_SCHEDULE), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ courses: userData.schedule }),
+          });
+
+          const data = await response.json();
+          if (response.ok) {
+            navigation.replace('ScheduleView', { schedule: data.schedule });
+          } else {
+            navigation.replace('Home');
+          }
+        } else {
+          navigation.replace('Home');
+        }
+      }
     } catch (error: any) {
       alert('Sign in failed: ' + error.message);
     }
@@ -65,62 +89,42 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#fff',
     padding: 20,
   },
   logoContainer: {
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
+    marginVertical: 40,
   },
   logo: {
-    width: 100,
-    height: 100,
-    marginBottom: 10,
+    width: 200,
+    height: 200,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '800',
-    marginBottom: 40,
-    color: '#B1810B', // Purdue Gold
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 30,
   },
   textInput: {
-    height: 50,
-    width: '90%',
-    backgroundColor: '#FFFFFF',
-    borderColor: '#E8EAF6',
-    borderWidth: 2,
-    borderRadius: 15,
-    marginVertical: 15,
-    paddingHorizontal: 25,
+    backgroundColor: '#f5f5f5',
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 15,
     fontSize: 16,
-    color: '#3C4858',
-    shadowColor: '#9E9E9E',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
   },
   button: {
-    width: '90%',
-    marginVertical: 15,
-    backgroundColor: '#B1810B', // Purdue Gold
-    padding: 20,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#B1810B',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 5,
-    elevation: 5,
+    backgroundColor: '#B1810B',
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 15,
   },
   buttonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '600',
+    color: '#fff',
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 
