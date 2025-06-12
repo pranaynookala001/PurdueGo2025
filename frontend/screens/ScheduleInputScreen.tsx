@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   SafeAreaView,
   Modal,
+  Keyboard,
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
@@ -17,6 +18,7 @@ import { RootStackParamList } from '../App';
 import { getApiUrl, API_ENDPOINTS } from '../config';
 import { Swipeable } from 'react-native-gesture-handler';
 import { saveUserData } from '../src/utils/userData';
+import MapView, { Marker } from 'react-native-maps';
 
 type ScheduleInputScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -35,6 +37,13 @@ interface CourseDetails {
   startTime: string;
   endTime: string;
   location: string;
+  roomNumber?: string;
+  locationCoords?: { latitude: number; longitude: number } | null;
+}
+
+interface LocationSuggestion {
+  description: string;
+  place_id: string;
 }
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
@@ -47,15 +56,18 @@ const TIME_OPTIONS = Array.from({ length: 25 }, (_, i) => {
   return `${displayHour}:${minute} ${period}`;
 });
 
+const GOOGLE_API_KEY = 'AIzaSyA5blZoZ1RLVNeDYk-8qKATJQyn-XQ0y-g';
+
 export default function ScheduleInputScreen({ navigation, route }: Props) {
-  const { courses } = route.params;
+  const { courses, editingIndex } = route.params;
   const [courseDetails, setCourseDetails] = useState<CourseDetails[]>(
-    courses.map(course => ({
-      code: course,
-      days: [],
-      startTime: '',
-      endTime: '',
-      location: '',
+    courses.map((course: any) => ({
+      code: course.code || course,
+      days: course.days || [],
+      startTime: course.startTime || '',
+      endTime: course.endTime || '',
+      location: course.location || '',
+      roomNumber: course.roomNumber || '',
     }))
   );
   const [isGenerating, setIsGenerating] = useState(false);
@@ -64,8 +76,21 @@ export default function ScheduleInputScreen({ navigation, route }: Props) {
   const [selectedTimeIndex, setSelectedTimeIndex] = useState<number | null>(null);
   const [isCustomTime, setIsCustomTime] = useState(false);
   const [activeCourseIndex, setActiveCourseIndex] = useState<number | null>(null);
-  const [editingCourse, setEditingCourse] = useState<number | null>(null);
+  const [editingCourse, setEditingCourse] = useState<number | null>(editingIndex !== undefined ? editingIndex : null);
   const [newCourseCode, setNewCourseCode] = useState('');
+  const [locationSuggestions, setLocationSuggestions] = useState<LocationSuggestion[][]>([]);
+  const [showLocationSuggestions, setShowLocationSuggestions] = useState<number | null>(null);
+  const [locationCoords, setLocationCoords] = useState<{ [index: number]: { latitude: number; longitude: number } | null }>(() => {
+    const initialCoords: { [index: number]: { latitude: number; longitude: number } | null } = {};
+    courses.forEach((course: any, idx: number) => {
+      if (course.locationCoords) {
+        initialCoords[idx] = course.locationCoords;
+      }
+    });
+    return initialCoords;
+  });
+  const [locationLoading, setLocationLoading] = useState<{ [index: number]: boolean }>({});
+  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const updateCourseDetail = (
     index: number,
@@ -114,8 +139,13 @@ export default function ScheduleInputScreen({ navigation, route }: Props) {
     setIsGenerating(true);
 
     try {
-      // Save schedule to Firestore
-      await saveUserData({ schedule: courseDetails });
+      // Prepare data for Firestore, including locationCoords
+      const scheduleToSave = courseDetails.map((course, index) => ({
+        ...course,
+        locationCoords: locationCoords[index] || null,
+      }));
+
+      await saveUserData({ schedule: scheduleToSave });
 
       const response = await fetch(getApiUrl(API_ENDPOINTS.GENERATE_SCHEDULE), {
         method: 'POST',
@@ -128,7 +158,8 @@ export default function ScheduleInputScreen({ navigation, route }: Props) {
       const data = await response.json();
 
       if (response.ok) {
-        navigation.navigate('ScheduleView', { schedule: data.schedule });
+        // Pass both processed schedule and original course details to ScheduleView
+        navigation.navigate('ScheduleView', { schedule: data.schedule, scheduleDetails: scheduleToSave });
       } else {
         Alert.alert('Error', data.error || 'Failed to generate schedule');
       }
@@ -149,17 +180,19 @@ export default function ScheduleInputScreen({ navigation, route }: Props) {
   const addOneHour = (timeStr: string) => {
     const [time, period] = timeStr.split(' ');
     const [hours, minutesRaw] = time.split(':');
-    const hoursNum = Number(hours);
-    let minutesNum = Number(minutesRaw);
-    if (isNaN(minutesNum)) minutesNum = 0;
+    let hoursNum = Number(hours);
+    let minutesNum = Number(minutesRaw) || 0;
     let newHour = hoursNum + 1;
     let newPeriod = period;
 
-    if (newHour > 12) {
-      newHour = newHour - 12;
+    if (hoursNum === 12) {
+      newHour = 1;
+      if (period === 'AM') newPeriod = 'AM';
+      else newPeriod = 'PM';
+    } else if (newHour === 12) {
       newPeriod = period === 'AM' ? 'PM' : 'AM';
-    }
-    if (newHour === 12) {
+    } else if (newHour > 12) {
+      newHour = 1;
       newPeriod = period === 'AM' ? 'PM' : 'AM';
     }
 
@@ -301,6 +334,64 @@ export default function ScheduleInputScreen({ navigation, route }: Props) {
     </View>
   );
 
+  const fetchLocationSuggestions = (query: string, courseIndex: number) => {
+    if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
+    if (query.length < 3) {
+      setLocationSuggestions(prev => {
+        const updated = [...prev];
+        updated[courseIndex] = [];
+        return updated;
+      });
+      setShowLocationSuggestions(null);
+      return;
+    }
+    setLocationLoading(prev => ({ ...prev, [courseIndex]: true }));
+    debounceTimeout.current = setTimeout(async () => {
+      try {
+        const response = await fetch(
+          `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
+            query
+          )}&key=${GOOGLE_API_KEY}&components=country:us|locality:West Lafayette|administrative_area:IN`
+        );
+        const data = await response.json();
+        setLocationSuggestions(prev => {
+          const updated = [...prev];
+          updated[courseIndex] = data.predictions || [];
+          return updated;
+        });
+        setShowLocationSuggestions(courseIndex);
+      } catch (error) {
+        setLocationSuggestions(prev => {
+          const updated = [...prev];
+          updated[courseIndex] = [];
+          return updated;
+        });
+      } finally {
+        setLocationLoading(prev => ({ ...prev, [courseIndex]: false }));
+      }
+    }, 400);
+  };
+
+  const fetchLocationCoords = async (placeId: string, courseIndex: number) => {
+    try {
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&key=${GOOGLE_API_KEY}`
+      );
+      const data = await response.json();
+      if (data.result && data.result.geometry && data.result.geometry.location) {
+        setLocationCoords(prev => ({
+          ...prev,
+          [courseIndex]: {
+            latitude: data.result.geometry.location.lat,
+            longitude: data.result.geometry.location.lng,
+          },
+        }));
+      }
+    } catch (e) {
+      // fallback: do nothing
+    }
+  };
+
   const renderCourseInput = (course: CourseDetails, index: number) => (
     <Swipeable
       key={course.code}
@@ -371,7 +462,7 @@ export default function ScheduleInputScreen({ navigation, route }: Props) {
               }}
             >
               <Text style={styles.timeSelectorText}>
-                {course.startTime || 'Select Start Time'}
+                {isCustomTime && activeCourseIndex === index ? 'Custom Time' : (course.startTime || 'Select Start Time')}
               </Text>
             </TouchableOpacity>
             {isCustomTime && activeCourseIndex === index && (
@@ -398,7 +489,7 @@ export default function ScheduleInputScreen({ navigation, route }: Props) {
               }}
             >
               <Text style={styles.timeSelectorText}>
-                {course.endTime || 'Select End Time'}
+                {isCustomTime && activeCourseIndex === index ? 'Custom Time' : (course.endTime || 'Select End Time')}
               </Text>
             </TouchableOpacity>
             {isCustomTime && activeCourseIndex === index && (
@@ -425,7 +516,40 @@ export default function ScheduleInputScreen({ navigation, route }: Props) {
             style={styles.textInput}
             placeholder="MATH 175"
             value={course.location}
-            onChangeText={text => updateCourseDetail(index, 'location', text)}
+            onChangeText={text => {
+              updateCourseDetail(index, 'location', text);
+              fetchLocationSuggestions(text, index);
+            }}
+            onFocus={() => course.location.length > 2 && setShowLocationSuggestions(index)}
+            onBlur={() => setTimeout(() => setShowLocationSuggestions(null), 200)}
+          />
+          {showLocationSuggestions === index && locationSuggestions[index] && locationSuggestions[index].length > 0 && (
+            <View style={styles.suggestionsContainerBelow}>
+              {locationSuggestions[index].map((suggestion) => (
+                <TouchableOpacity
+                  key={suggestion.place_id}
+                  style={styles.suggestionItem}
+                  onPress={() => {
+                    updateCourseDetail(index, 'location', suggestion.description);
+                    fetchLocationCoords(suggestion.place_id, index);
+                    setShowLocationSuggestions(null);
+                    Keyboard.dismiss();
+                  }}
+                >
+                  <Text style={styles.suggestionText}>{suggestion.description}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+
+        <View style={styles.inputSection}>
+          <Text style={styles.inputLabel}>Room Number (optional)</Text>
+          <TextInput
+            style={styles.textInput}
+            placeholder="e.g., 101A"
+            value={course.roomNumber || ''}
+            onChangeText={text => updateCourseDetail(index, 'roomNumber', text)}
           />
         </View>
       </View>
@@ -680,12 +804,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: 80,
     height: '100%',
+    borderRadius: 12,
+    marginHorizontal: 2,
   },
   editButton: {
     backgroundColor: '#B1810B',
+    borderTopLeftRadius: 12,
+    borderBottomLeftRadius: 12,
   },
   deleteButton: {
     backgroundColor: '#ff3b30',
+    borderTopRightRadius: 12,
+    borderBottomRightRadius: 12,
   },
   swipeButtonText: {
     color: '#fff',
@@ -750,5 +880,28 @@ const styles = StyleSheet.create({
   addCourseButtonText: {
     color: '#fff',
     fontWeight: '600',
+  },
+  suggestionsContainer: {
+    display: 'none',
+  },
+  suggestionsContainerBelow: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    marginTop: 4,
+    maxHeight: 200,
+    width: '100%',
+    zIndex: 10,
+    position: 'relative',
+  },
+  suggestionItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  suggestionText: {
+    fontSize: 14,
+    color: '#333',
   },
 });
