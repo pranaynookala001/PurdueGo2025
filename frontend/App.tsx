@@ -26,6 +26,10 @@ export type RootStackParamList = {
 
 const Stack = createStackNavigator<RootStackParamList>();
 
+
+
+
+
 export default function App() {
   const [isReady, setIsReady] = useState(false);
 
