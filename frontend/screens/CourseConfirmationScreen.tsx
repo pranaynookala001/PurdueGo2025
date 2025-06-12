@@ -304,12 +304,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: 80,
     height: '100%',
+    borderRadius: 8,
+    marginHorizontal: 2,
   },
   editButton: {
     backgroundColor: '#B1810B',
+    borderTopLeftRadius: 8,
+    borderBottomLeftRadius: 8,
   },
   deleteButton: {
     backgroundColor: '#ff3b30',
+    borderTopRightRadius: 8,
+    borderBottomRightRadius: 8,
   },
   swipeButtonText: {
     color: '#fff',

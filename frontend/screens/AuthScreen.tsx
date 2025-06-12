@@ -22,18 +22,26 @@ const AuthScreen = ({ navigation }: AuthScreenProps) => {
         // Load user data from Firestore
         const userData = await loadUserData();
         if (userData && userData.schedule) {
-          // Process the schedule data through the backend
+          // Prepare the body for the schedule generation request
+          const requestBody: { courses: any[]; dormCoords?: { latitude: number; longitude: number } } = {
+            courses: userData.schedule,
+          };
+
+          if (userData.travel && userData.travel.dormCoords) {
+            requestBody.dormCoords = userData.travel.dormCoords;
+          }
+
           const response = await fetch(getApiUrl(API_ENDPOINTS.GENERATE_SCHEDULE), {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ courses: userData.schedule }),
+            body: JSON.stringify(requestBody),
           });
 
           const data = await response.json();
           if (response.ok) {
-            navigation.replace('ScheduleView', { schedule: data.schedule });
+            navigation.replace('ScheduleView', { schedule: data.schedule, scheduleDetails: userData.schedule });
           } else {
             navigation.replace('Home');
           }
