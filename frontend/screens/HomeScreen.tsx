@@ -23,7 +23,7 @@ export default function HomeScreen({ navigation }: Props) {
         <View style={styles.header}>
           <Text style={styles.title}>PurdueGo</Text>
           <Text style={styles.subtitle}>
-            Your personalized scheduling assistant
+            A personalized scheduling assistant
           </Text>
         </View>
 
