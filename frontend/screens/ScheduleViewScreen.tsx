@@ -7,6 +7,8 @@ import {
   ScrollView,
   SafeAreaView,
   Dimensions,
+  Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
@@ -30,7 +32,7 @@ const HOUR_HEIGHT = 60; // Height for each hour block in pixels
 const TIMELINE_WIDTH = Dimensions.get('window').width - 80; // Account for hour labels and padding
 
 export default function ScheduleViewScreen({ navigation, route }: Props) {
-  const { schedule } = route.params;
+  const { schedule = {}, scheduleDetails = [] } = route.params;
   const [viewMode, setViewMode] = useState<'weekly' | 'daily'>('weekly');
   const [selectedDay, setSelectedDay] = useState('Monday');
 
@@ -52,9 +54,9 @@ export default function ScheduleViewScreen({ navigation, route }: Props) {
           <Text style={styles.dayHeader}>{day}</Text>
           <View style={styles.classesContainer}>
             {schedule[day] && schedule[day].length > 0 ? (
-              schedule[day].map((classInfo: string, index: number) => (
+              schedule[day].map((item: any, index: number) => (
                 <View key={index} style={styles.classCard}>
-                  <Text style={styles.classText}>{classInfo}</Text>
+                  <Text style={styles.classText}>{item.info}</Text>
                 </View>
               ))
             ) : (
@@ -95,32 +97,48 @@ export default function ScheduleViewScreen({ navigation, route }: Props) {
                 <View style={styles.hourLine} />
               </View>
             ))}
-            
-            {schedule[selectedDay] && schedule[selectedDay].map((classInfo: string, index: number) => {
-              const startTime = parseTime(classInfo);
-              const [time] = classInfo.split(' at ');
-              const [_, endTimeStr] = time.split('–');
-              const endTime = parseTime(endTimeStr.trim());
-              
+            {schedule[selectedDay] && schedule[selectedDay].map((item: any, index: number) => {
+              const startTime = parseTime(item.startTime);
+              const endTime = parseTime(item.endTime);
               const top = (startTime - 7) * HOUR_HEIGHT;
               const height = (endTime - startTime) * HOUR_HEIGHT;
-              
+
+              // Find the original course details for editing
+              const originalCourseIndex = scheduleDetails.findIndex(
+                (course: any) => course.code === (item.info.match(/([^ ]+) at (.+)/) ? item.info.match(/([^ ]+) at (.+)/)[1] : null) && // Extract course code
+                  parseTime(course.startTime) === startTime &&
+                  parseTime(course.endTime) === endTime
+              );
+
               return (
-                <View
+                <TouchableOpacity
                   key={index}
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    if (item.type === 'class') { // Only navigate for class blocks
+                      if (originalCourseIndex !== -1) {
+                        navigation.navigate('ScheduleInput', { courses: scheduleDetails, editingIndex: originalCourseIndex });
+                      } else {
+                        // Fallback: If original course not found, navigate to add new class
+                        navigation.navigate('ScheduleInput', { courses: scheduleDetails });
+                      }
+                    }
+                  }}
                   style={[
                     styles.classBlock,
                     {
                       top,
                       height,
-                      width: TIMELINE_WIDTH,
+                      width: TIMELINE_WIDTH - 36, // Make block slightly smaller to fit
+                      left: 60, // Adjust left position for better alignment
+                      backgroundColor: item.color || styles.classBlock.backgroundColor, // Use item color or default
                     },
                   ]}
                 >
                   <Text style={styles.classBlockTitle} numberOfLines={2}>
-                    {classInfo}
+                    {item.info}
                   </Text>
-                </View>
+                </TouchableOpacity>
               );
             })}
           </View>
@@ -140,6 +158,22 @@ export default function ScheduleViewScreen({ navigation, route }: Props) {
           onPress={() => handleDayChange('next')}
         >
           <Ionicons name="chevron-forward" size={24} color="#B1810B" />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.scheduleButtonsContainer}>
+        <TouchableOpacity
+          style={styles.newScheduleButton}
+          onPress={() => navigation.navigate('Home')}
+        >
+          <Text style={styles.newScheduleButtonText}>Create New</Text>
+          <Text style={styles.newScheduleButtonText}>Schedule</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.modifyScheduleButton}
+          onPress={() => navigation.navigate('ScheduleInput', { courses: scheduleDetails })}
+        >
+          <Text style={styles.modifyScheduleButtonText}>Modify Existing Schedule</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -187,13 +221,6 @@ export default function ScheduleViewScreen({ navigation, route }: Props) {
         </View>
 
         {viewMode === 'weekly' ? renderWeeklyView() : renderDailyView()}
-
-        <TouchableOpacity
-          style={styles.newScheduleButton}
-          onPress={() => navigation.navigate('Home')}
-        >
-          <Text style={styles.newScheduleButtonText}>Create New Schedule</Text>
-        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -320,7 +347,7 @@ const styles = StyleSheet.create({
   },
   classBlock: {
     position: 'absolute',
-    left: 0,
+    left: 60, // Fixed left position to align with hour labels
     backgroundColor: '#B1810B',
     borderRadius: 8,
     padding: 8,
@@ -342,15 +369,37 @@ const styles = StyleSheet.create({
   },
   newScheduleButton: {
     backgroundColor: '#B1810B',
-    paddingVertical: 16,
+    paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
-    marginTop: 20,
+    flex: 1, // Make it take equal space
   },
   newScheduleButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#fff',
+    textAlign: 'center',
+  },
+  modifyScheduleButton: {
+    backgroundColor: '#B1810B',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    flex: 1, // Make it take equal space
+    marginLeft: 10, // Add some space between buttons
+  },
+  modifyScheduleButtonText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#fff',
+    textAlign: 'center',
+  },
+  scheduleButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+    marginBottom: 40,
+    paddingHorizontal: 20,
   },
   navigationContainer: {
     flexDirection: 'row',

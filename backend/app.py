@@ -6,10 +6,24 @@ from io import BytesIO
 import re
 import logging
 from werkzeug.exceptions import RequestEntityTooLarge
+import googlemaps
+from datetime import datetime, timedelta
+import pytz
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Initialize Google Maps client
+# WARNING: Hardcoding API key directly in code is NOT recommended for production environments.
+# This is done for immediate testing/development convenience.
+# For production, use environment variables (e.g., os.environ.get('GOOGLE_MAPS_API_KEY'))
+GOOGLE_MAPS_API_KEY = "AIzaSyA5blZoZ1RLVNeDYk-8qKATJQyn-XQ0y-g"
+# GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY')
+# if not GOOGLE_MAPS_API_KEY:
+#     logger.error("GOOGLE_MAPS_API_KEY environment variable not set.")
+#     pass
+gmaps = googlemaps.Client(key=GOOGLE_MAPS_API_KEY)
 
 #creating an instance/object of the flask class and it becomes the web server, router, request/error handler, and response manager
 app = Flask(__name__)
@@ -25,7 +39,32 @@ CORS(app, resources={
 # Increase maximum content length to 16MB
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
-#when someone goes to http://localhost:3001/api/ping, flask sees that /api/ping matches a route, it runs the ping function directly below
+def get_travel_time(origin_coords, destination_coords, departure_time_unix):
+    try:
+        origin = f"{origin_coords['latitude']},{origin_coords['longitude']}"
+        destination = f"{destination_coords['latitude']},{destination_coords['longitude']}"
+
+        directions_result = gmaps.directions(
+            origin, 
+            destination, 
+            mode="driving",
+            departure_time=departure_time_unix,
+            traffic_model="best_guess",
+        )
+
+        if directions_result and len(directions_result) > 0:
+            route = directions_result[0]
+            if 'legs' in route and len(route['legs']) > 0:
+                leg = route['legs'][0]
+                if 'duration_in_traffic' in leg:
+                    return leg['duration_in_traffic']['value']
+                elif 'duration' in leg:
+                    return leg['duration']['value']
+        return None
+    except Exception as e:
+        logger.error(f"Error fetching travel time: {str(e)}")
+        return None
+
 @app.route('/api/ping')
 def ping():
     logger.info("Received ping request")
@@ -42,7 +81,8 @@ def generateSchedule():
 
         logger.info(f"Received schedule input: {data}")
 
-        # Initialize empty schedule for each day
+        dorm_coords = data.get('dormCoords')
+
         schedule = {
             "Monday": [],
             "Tuesday": [],
@@ -51,24 +91,65 @@ def generateSchedule():
             "Friday": []
         }
 
-        # Process each course and add it to the schedule
+        purdue_timezone = pytz.timezone('America/New_York')
+
         for course in data['courses']:
             course_code = course['code']
             days = course['days']
-            start_time = course['startTime']
-            end_time = course['endTime']
+            start_time_str = course['startTime']
+            end_time_str = course['endTime']
             location = course['location']
+            class_location_coords = course.get('locationCoords')
 
-            # Create the class info string
-            class_info = f"{start_time}–{end_time} {course_code} at {location}"
+            class_info = f"{start_time_str}–{end_time_str} {course_code} at {location}"
 
-            # Add the class to each of its scheduled days
             for day in days:
-                schedule[day].append(class_info)
+                schedule[day].append({
+                    "type": "class",
+                    "info": class_info,
+                    "startTime": start_time_str,
+                    "endTime": end_time_str,
+                })
 
-        # Sort classes by start time within each day
+                if dorm_coords and class_location_coords:
+                    try:
+                        # Parse class start time string into a datetime object for comparison
+                        current_year = datetime.now().year # Use current year for accurate date comparison
+                        # Use 2-digit hour format for strptime to handle 12 AM/PM correctly
+                        class_start_dt = purdue_timezone.localize(datetime.strptime(f"{current_year} {start_time_str}", '%Y %I:%M %p'))
+
+                        current_time_for_api = datetime.now(purdue_timezone)
+                        
+                        # Only calculate leave time if the class's start time is in the future
+                        if class_start_dt > current_time_for_api:
+                            BUFFER_SECONDS = 5 * 60
+
+                            # Pass current time as Unix timestamp for departure_time
+                            travel_time_seconds = get_travel_time(dorm_coords, class_location_coords, int(current_time_for_api.timestamp()))
+
+                            if travel_time_seconds is not None:
+                                leave_time_dt = class_start_dt - timedelta(seconds=travel_time_seconds + BUFFER_SECONDS)
+                                
+                                if leave_time_dt > current_time_for_api:
+                                    leave_time_str = leave_time_dt.strftime('%I:%M %p').lstrip('0')
+                                    schedule[day].append({
+                                        "type": "leave_time",
+                                        "info": f"Leave for {course_code} at {leave_time_str}",
+                                        "startTime": leave_time_str,
+                                        "endTime": start_time_str,
+                                        "color": "#FFA500",
+                                    })
+                                else:
+                                    logger.warning(f"Calculated leave time for {course_code} is in the past; skipping block.")
+                            else:
+                                logger.warning(f"Could not calculate travel time for {course_code}")
+                        else:
+                            logger.info(f"Class {course_code} at {start_time_str} is in the past; skipping leave time calculation.")
+                    except Exception as e:
+                        logger.error(f"Error calculating leave time for {course_code}: {str(e)}")
+
         for day in schedule:
-            schedule[day].sort(key=lambda x: x.split('–')[0])
+            schedule[day].sort(key=lambda x: datetime.strptime(x['startTime'].replace('PM', ' PM').replace('AM', ' AM'), '%I:%M %p'))
 
         return jsonify({"schedule": schedule})
     except Exception as e:

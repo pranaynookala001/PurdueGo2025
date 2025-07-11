@@ -22,8 +22,8 @@ export type RootStackParamList = {
   Home: undefined;
   Upload: undefined;
   CourseConfirmation: { courses: string[] };
-  ScheduleInput: { courses: string[] };
-  ScheduleView: { schedule: any };
+  ScheduleInput: { courses: any[]; editingIndex?: number };
+  ScheduleView: { schedule: any; scheduleDetails?: any; };
   TravelSetup: undefined;
   TravelDecision: undefined;
 };

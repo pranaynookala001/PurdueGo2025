@@ -15,6 +15,9 @@ import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
 import MapView, { Marker } from 'react-native-maps';
 import { useNavigation } from '@react-navigation/native';
+import type { StackNavigationProp } from '@react-navigation/stack';
+import type { RootStackParamList } from '../../App';
+import { saveUserData } from '../utils/userData';
 
 interface AddressSuggestion {
   description: string;
@@ -22,7 +25,7 @@ interface AddressSuggestion {
 }
 
 export default function TravelSetup() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<Location.LocationObject | null>(null);
   const [dormAddress, setDormAddress] = useState('');
@@ -48,6 +51,8 @@ export default function TravelSetup() {
         shouldShowAlert: true,
         shouldPlaySound: true,
         shouldSetBadge: false,
+        shouldShowBanner: true,
+        shouldShowList: true,
       }),
     });
   }, []);
@@ -154,11 +159,21 @@ export default function TravelSetup() {
       Alert.alert('Error', 'Please enter your dorm address');
       return;
     }
-    // Save preferences here if needed
-    Alert.alert('Success', 'Your travel preferences have been saved!');
-    setTimeout(() => {
-      navigation.navigate('Upload');
-    }, 500);
+    try {
+      await saveUserData({
+        travel: {
+          dormAddress,
+          dormCoords,
+          wantsNotifications,
+        },
+      });
+      Alert.alert('Success', 'Your travel preferences have been saved!');
+      setTimeout(() => {
+        navigation.navigate('Upload');
+      }, 500);
+    } catch (e) {
+      Alert.alert('Error', 'Failed to save travel preferences.');
+    }
   };
 
   return (
