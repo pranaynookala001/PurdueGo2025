@@ -18,7 +18,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.purduego.purduego",
       "config": {
-        "googleMapsApiKey": "AIzaSyA5blZoZ1RLVNeDYk-8qKATJQyn-XQ0y-g"
+        // Google Maps API key moved to environment variable
       }
     },
     "android": {

@@ -18,6 +18,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RootStackParamList } from '../../App';
 import { saveUserData } from '../utils/userData';
+import Constants from 'expo-constants';
 
 interface AddressSuggestion {
   description: string;
@@ -36,6 +37,7 @@ export default function TravelSetup() {
   const [dormCoords, setDormCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
   const [suggestionError, setSuggestionError] = useState<string | null>(null);
+  const apiKey = Constants.expoConfig.extra.googleMapsApiKey;
 
   useEffect(() => {
     (async () => {
@@ -83,7 +85,7 @@ export default function TravelSetup() {
         const response = await fetch(
           `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
             query
-          )}&key=AIzaSyA5blZoZ1RLVNeDYk-8qKATJQyn-XQ0y-g&components=country:us`
+          )}&key=${apiKey}&components=country:us`
         );
         const data = await response.json();
         if (data.status !== 'OK') {
@@ -108,7 +110,7 @@ export default function TravelSetup() {
   const fetchPlaceDetails = async (placeId: string) => {
     try {
       const response = await fetch(
-        `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&key=AIzaSyA5blZoZ1RLVNeDYk-8qKATJQyn-XQ0y-g`
+        `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&key=${apiKey}`
       );
       const data = await response.json();
       if (data.result && data.result.geometry && data.result.geometry.location) {

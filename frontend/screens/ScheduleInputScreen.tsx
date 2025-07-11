@@ -19,6 +19,7 @@ import { getApiUrl, API_ENDPOINTS } from '../config';
 import { Swipeable } from 'react-native-gesture-handler';
 import { saveUserData } from '../src/utils/userData';
 import MapView, { Marker } from 'react-native-maps';
+import Constants from 'expo-constants';
 
 type ScheduleInputScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -56,7 +57,7 @@ const TIME_OPTIONS = Array.from({ length: 25 }, (_, i) => {
   return `${displayHour}:${minute} ${period}`;
 });
 
-const GOOGLE_API_KEY = 'AIzaSyA5blZoZ1RLVNeDYk-8qKATJQyn-XQ0y-g';
+const apiKey = Constants.expoConfig.extra.googleMapsApiKey;
 
 export default function ScheduleInputScreen({ navigation, route }: Props) {
   const { courses, editingIndex } = route.params;
@@ -351,7 +352,7 @@ export default function ScheduleInputScreen({ navigation, route }: Props) {
         const response = await fetch(
           `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
             query
-          )}&key=${GOOGLE_API_KEY}&components=country:us|locality:West Lafayette|administrative_area:IN`
+          )}&key=${apiKey}&components=country:us|locality:West Lafayette|administrative_area:IN`
         );
         const data = await response.json();
         setLocationSuggestions(prev => {
@@ -375,7 +376,7 @@ export default function ScheduleInputScreen({ navigation, route }: Props) {
   const fetchLocationCoords = async (placeId: string, courseIndex: number) => {
     try {
       const response = await fetch(
-        `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&key=${GOOGLE_API_KEY}`
+        `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&key=${apiKey}`
       );
       const data = await response.json();
       if (data.result && data.result.geometry && data.result.geometry.location) {
